@@ -1,0 +1,52 @@
+/* Custom CSS for Smart City Weather Dashboard */
+
+/* Styling for advice items in the recommendation section */
+.advice-item {
+    background: #f8fafc;
+    border-radius: 1rem;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.advice-item:hover {
+    transform: translateY(-2px);
+    background: #f1f5f9;
+}
+
+/* Custom Webkit Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05); 
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3); 
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5); 
+}
+
+/* Smooth input autofill styling reset */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+}
+
+/* Simple enter animation for forecast cards */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.forecast-card-anim {
+    animation: fadeIn 0.5s ease-out forwards;
+}
