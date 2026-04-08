@@ -3,129 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart City Weather Dashboard</title>
-    <!-- Tailwind CSS for robust styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts for typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome for icons -->
+    <title>WeatherIQ — Smart City Weather</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body id="app-body" class="min-h-screen font-outfit text-white bg-gradient-to-br from-[#f97316] to-[#ea580c] flex flex-col items-center py-10 px-4 md:px-8">
+<body id="app-body">
 
-    <div class="w-full max-w-5xl">
-        <!-- Header Section -->
-        <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold mb-6 drop-shadow-lg tracking-tight">
-                <i class="fa-solid fa-cloud-sun text-white mr-3"></i>Smart City Weather
-            </h1>
-            
-            <!-- Search Bar -->
-            <form id="search-form" class="relative max-w-lg mx-auto transform transition-transform focus-within:scale-105">
-                <input 
-                    type="text" 
-                    id="city-input" 
-                    placeholder="Search for a city..." 
-                    class="w-full py-4 px-6 rounded-full text-gray-800 bg-white shadow-xl focus:outline-none focus:ring-4 focus:ring-white/50 text-lg transition-all"
-                    autocomplete="off"
-                    required
-                >
-                <button type="submit" class="absolute right-2 top-2 bottom-2 bg-[#3b82f6] hover:bg-blue-600 text-white rounded-full px-6 flex items-center justify-center transition-all shadow-md">
-                    <i class="fa-solid fa-search"></i>
-                </button>
-            </form>
-            
-            <!-- Messages container -->
-            <div id="error-message" class="text-red-200 mt-4 font-semibold hidden bg-red-900/40 py-2 px-4 rounded-lg inline-block backdrop-blur-sm border border-red-500/30">
-                <i class="fa-solid fa-circle-exclamation mr-2"></i><span id="error-text">City not found. Please try again.</span>
+    <!-- Atmospheric Background -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="noise-overlay"></div>
+
+    <div class="app-container">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="brand">
+                <span class="brand-icon"><i class="fa-solid fa-wind"></i></span>
+                <span class="brand-name">WeatherIQ</span>
             </div>
-            
-            <div id="loading" class="mt-6 hidden flex flex-col items-center justify-center text-white/90">
-                <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-2 drop-shadow-md"></i>
-                <span class="font-medium tracking-wider">Fetching real-time data...</span>
+
+            <!-- Search -->
+            <form id="search-form" class="search-form" autocomplete="off">
+                <div class="search-inner">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input 
+                        type="text" 
+                        id="city-input" 
+                        placeholder="Search any city..."
+                        required
+                    >
+                    <button type="submit" class="search-btn">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Messages -->
+            <div id="error-message" class="error-banner hidden">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="error-text">City not found.</span>
             </div>
         </header>
 
-        <!-- Main Content (Hidden Initially) -->
-        <main id="weather-content" class="hidden flex flex-col gap-8 opacity-0 transition-opacity duration-700 ease-in-out">
-            
-            <!-- Top Section: Current Weather & Advice -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                <!-- Current Weather Card -->
-                <div class="bg-white text-[#1e293b] rounded-[2rem] p-8 shadow-2xl relative overflow-hidden group">
-                    
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 class="text-3xl md:text-4xl font-bold drop-shadow-md flex flex-col" id="city-name">
-                                <span id="city-display" class="mb-1">--</span>
-                                <span id="country-display" class="text-lg font-normal text-[#64748b]"><i class="fa-solid fa-location-dot mr-1 text-[#f97316]"></i>--</span>
-                            </h2>
-                        </div>
-                        <img id="current-icon" src="" alt="Weather Icon" class="w-24 h-24 drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] filter hover:scale-110 transition-transform">
+        <!-- Loading -->
+        <div id="loading" class="loading-state hidden">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring delay-1"></div>
+            <div class="pulse-ring delay-2"></div>
+            <span class="loading-text">Fetching atmosphere...</span>
+        </div>
+
+        <!-- Main Weather Content -->
+        <main id="weather-content" class="weather-content hidden">
+
+            <!-- Hero Row: Big Temp + Location -->
+            <section class="hero-section">
+                <div class="hero-left">
+                    <div class="location-badge">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span id="city-display">--</span>
+                        <span class="separator">·</span>
+                        <span id="country-display">--</span>
                     </div>
-                    
-                    <div class="flex items-end gap-4 mb-4">
-                        <div class="text-7xl md:text-8xl font-bold drop-shadow-lg tracking-tighter" id="current-temp">--°</div>
-                        <div class="text-2xl md:text-3xl font-medium mb-2 capitalize text-[#64748b]" id="current-condition">--</div>
-                    </div>
-                    
-                    <!-- Stats Grid -->
-                    <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-gray-100">
-                        <div class="flex items-center gap-4 bg-slate-50 rounded-2xl p-4 transition-colors">
-                            <i class="fa-solid fa-droplet text-2xl text-[#3b82f6]"></i>
-                            <div>
-                                <div class="text-sm font-medium text-[#64748b] uppercase tracking-widest">Humidity</div>
-                                <div class="font-bold text-xl text-[#1e293b]" id="current-humidity">--%</div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4 bg-slate-50 rounded-2xl p-4 transition-colors">
-                            <i class="fa-solid fa-wind text-2xl text-[#3b82f6]"></i>
-                            <div>
-                                <div class="text-sm font-medium text-[#64748b] uppercase tracking-widest">Wind</div>
-                                <div class="font-bold text-xl text-[#1e293b]" id="current-wind">-- m/s</div>
-                            </div>
+                    <div class="hero-temp-row">
+                        <span id="current-temp" class="big-temp">--°</span>
+                        <div class="hero-icon-wrap">
+                            <img id="current-icon" src="" alt="Weather" class="hero-icon">
                         </div>
                     </div>
+                    <p id="current-condition" class="condition-label">--</p>
                 </div>
 
-                <!-- AI Advice Card (What to wear) -->
-                <div class="bg-white text-[#1e293b] rounded-[2rem] p-8 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
-                    
-                    <div>
-                        <h3 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                            <div class="bg-orange-100 text-[#f97316] p-2 rounded-xl"><i class="fa-solid fa-shirt"></i></div>
-                            Smart Recommendations
-                        </h3>
-                        
-                        <!-- Dynamic Suggestions -->
-                        <div id="advice-container" class="space-y-4">
-                            <!-- Injected by JS -->
+                <!-- Right: Stats Pills -->
+                <div class="stats-column">
+                    <div class="stat-pill">
+                        <div class="stat-icon humidity-icon">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Humidity</span>
+                            <span class="stat-value" id="current-humidity">--%</span>
                         </div>
                     </div>
-                    
-                    <div class="mt-6 text-sm text-[#64748b] text-right italic font-medium">
-                        Powered by real-time climate data
+                    <div class="stat-pill">
+                        <div class="stat-icon wind-icon">
+                            <i class="fa-solid fa-wind"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Wind</span>
+                            <span class="stat-value" id="current-wind">-- m/s</span>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Bottom Section: 5-Day Forecast -->
-            <section class="mt-4">
-                <h3 class="text-2xl font-bold mb-6 flex items-center gap-3 drop-shadow-md">
-                    <i class="fa-regular fa-calendar-days opacity-80"></i> 5-Day Forecast
-                </h3>
-                
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6" id="forecast-container">
-                    <!-- Forecast Cards Injected by JS -->
+                    <div class="stat-pill">
+                        <div class="stat-icon feels-icon">
+                            <i class="fa-solid fa-temperature-half"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Feels Like</span>
+                            <span class="stat-value" id="feels-like">--°</span>
+                        </div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-icon visibility-icon">
+                            <i class="fa-solid fa-eye"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Visibility</span>
+                            <span class="stat-value" id="visibility">-- km</span>
+                        </div>
+                    </div>
                 </div>
             </section>
+
+            <!-- Middle Row: Advice + AQI-style extras -->
+            <section class="mid-section">
+
+                <!-- Smart Recommendations -->
+                <div class="glass-card advice-card">
+                    <div class="card-header">
+                        <span class="card-label">Smart Recommendations</span>
+                        <span class="card-tag">AI</span>
+                    </div>
+                    <div id="advice-container" class="advice-list">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Sun Times Card -->
+                <div class="glass-card sun-card">
+                    <div class="card-header">
+                        <span class="card-label">Sun Schedule</span>
+                    </div>
+                    <div class="sun-arc-wrap">
+                        <svg class="sun-arc" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 100 Q100 0 190 100" stroke="rgba(255,255,255,0.12)" stroke-width="2" fill="none"/>
+                            <path id="sun-progress-path" d="M10 100 Q100 0 190 100" stroke="url(#sunGrad)" stroke-width="2.5" fill="none" 
+                                  stroke-dasharray="300" stroke-dashoffset="300"/>
+                            <defs>
+                                <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#f97316"/>
+                                    <stop offset="100%" stop-color="#fbbf24"/>
+                                </linearGradient>
+                            </defs>
+                            <circle id="sun-dot" cx="10" cy="100" r="5" fill="#fbbf24" filter="url(#glow)"/>
+                            <defs>
+                                <filter id="glow">
+                                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="sun-times">
+                        <div class="sun-time-item">
+                            <i class="fa-solid fa-sun sunrise-clr"></i>
+                            <span class="sun-time-lbl">Sunrise</span>
+                            <span class="sun-time-val" id="sunrise-time">--:--</span>
+                        </div>
+                        <div class="sun-time-item">
+                            <i class="fa-solid fa-moon sunset-clr"></i>
+                            <span class="sun-time-lbl">Sunset</span>
+                            <span class="sun-time-val" id="sunset-time">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Forecast Strip -->
+            <section class="forecast-section">
+                <div class="section-title">
+                    <i class="fa-regular fa-calendar-days"></i>
+                    <span>5-Day Forecast</span>
+                </div>
+                <div id="forecast-container" class="forecast-strip">
+                    <!-- Injected by JS -->
+                </div>
+            </section>
+
         </main>
+
     </div>
 
-    <!-- Script loading -->
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,258 +1,252 @@
 /**
- * Smart City Weather Dashboard - Main Script
- * Handles real-time weather fetching, forecast mapping, UI rendering, and Geolocation.
+ * Nimbus — Smart City Weather Dashboard
+ * Updated script supporting the redesigned UI
  */
 
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// Replace this with your OpenWeatherMap API Key
-const API_KEY = 'ee8dce99bc63209d0782ce2987028561'; // Your personal OpenWeatherMap API Key
+const API_KEY = 'ee8dce99bc63209d0782ce2987028561';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 // ==========================================
 // DOM ELEMENTS
 // ==========================================
-const appBody = document.getElementById('app-body');
-const searchForm = document.getElementById('search-form');
-const cityInput = document.getElementById('city-input');
-const errorMessage = document.getElementById('error-message');
-const errorText = document.getElementById('error-text');
-const loadingIndicator = document.getElementById('loading');
-const weatherContent = document.getElementById('weather-content');
+const searchForm      = document.getElementById('search-form');
+const cityInput       = document.getElementById('city-input');
+const errorMessage    = document.getElementById('error-message');
+const errorText       = document.getElementById('error-text');
+const loadingEl       = document.getElementById('loading');
+const weatherContent  = document.getElementById('weather-content');
 
-// Current Weather Elements
-const cityDisplay = document.getElementById('city-display');
-const countryDisplay = document.getElementById('country-display');
-const currentIcon = document.getElementById('current-icon');
-const currentTemp = document.getElementById('current-temp');
+const cityDisplay      = document.getElementById('city-display');
+const countryDisplay   = document.getElementById('country-display');
+const currentIcon      = document.getElementById('current-icon');
+const currentTemp      = document.getElementById('current-temp');
 const currentCondition = document.getElementById('current-condition');
-const currentHumidity = document.getElementById('current-humidity');
-const currentWind = document.getElementById('current-wind');
-
-// Advice & Forecast Elements
-const adviceContainer = document.getElementById('advice-container');
+const currentHumidity  = document.getElementById('current-humidity');
+const currentWind      = document.getElementById('current-wind');
+const feelsLikeEl      = document.getElementById('feels-like');
+const visibilityEl     = document.getElementById('visibility');
+const sunriseEl        = document.getElementById('sunrise-time');
+const sunsetEl         = document.getElementById('sunset-time');
+const adviceContainer  = document.getElementById('advice-container');
 const forecastContainer = document.getElementById('forecast-container');
 
 // ==========================================
-// EVENT LISTENERS
+// INIT
 // ==========================================
 document.addEventListener('DOMContentLoaded', initApp);
 
 searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const city = cityInput.value.trim();
-    if (city) {
-        fetchWeatherData(city);
-    }
+    if (city) fetchWeatherData(city);
 });
 
-// ==========================================
-// CORE FUNCTIONS
-// ==========================================
-
 function initApp() {
-    // Check if we have a saved city in localStorage
-    const savedCity = localStorage.getItem('lastSearchedCity');
-
-    if (savedCity) {
-        // Fetch weather for the saved city
-        fetchWeatherData(savedCity);
+    const saved = localStorage.getItem('lastSearchedCity');
+    if (saved) {
+        fetchWeatherData(saved);
+    } else if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            pos => fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude),
+            ()  => fetchWeatherData('London')
+        );
     } else {
-        // Try to get geolocation
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    fetchWeatherByCoords(lat, lon);
-                },
-                (error) => {
-                    console.warn("Geolocation denied or failed.", error);
-                    // Fallback to a default city if geolocation fails
-                    fetchWeatherData('London');
-                }
-            );
-        } else {
-            // Geolocation not supported
-            fetchWeatherData('London');
-        }
+        fetchWeatherData('London');
     }
 }
 
-// Fetch Weather by coordinates (Geolocation)
+// ==========================================
+// FETCH
+// ==========================================
 async function fetchWeatherByCoords(lat, lon) {
     showLoading();
     try {
-        const [currentRes, forecastRes] = await Promise.all([
+        const [curRes, fcRes] = await Promise.all([
             fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`),
             fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`)
         ]);
-
-        handleApiResponses(currentRes, forecastRes);
-    } catch (error) {
-        showError("Failed to connect to weather service.");
-    }
+        handleApiResponses(curRes, fcRes);
+    } catch { showError("Failed to connect to weather service."); }
 }
 
-// Fetch Weather by City Name
 async function fetchWeatherData(city) {
     showLoading();
     try {
-        const [currentRes, forecastRes] = await Promise.all([
+        const [curRes, fcRes] = await Promise.all([
             fetch(`${BASE_URL}/weather?q=${city}&units=metric&appid=${API_KEY}`),
             fetch(`${BASE_URL}/forecast?q=${city}&units=metric&appid=${API_KEY}`)
         ]);
-
-        handleApiResponses(currentRes, forecastRes, city);
-    } catch (error) {
-        showError("Failed to connect to weather service.");
-    }
+        handleApiResponses(curRes, fcRes);
+    } catch { showError("Failed to connect to weather service."); }
 }
 
-// Process API Responses
-async function handleApiResponses(currentRes, forecastRes, searchedCityName = null) {
-    if (currentRes.status === 401 || forecastRes.status === 401) {
-        showError("Invalid API Key. Please update the API_KEY variable in script.js.");
-        return;
-    }
+async function handleApiResponses(curRes, fcRes) {
+    if (curRes.status === 401) { showError("Invalid API Key."); return; }
+    if (!curRes.ok || !fcRes.ok) { showError("City not found. Please try another search."); return; }
 
-    if (!currentRes.ok || !forecastRes.ok) {
-        showError("City not found. Please try another search.");
-        return;
-    }
+    const current  = await curRes.json();
+    const forecast = await fcRes.json();
 
-    const currentData = await currentRes.json();
-    const forecastData = await forecastRes.json();
-
-    // Store successful search
-    localStorage.setItem('lastSearchedCity', currentData.name);
-    cityInput.value = ''; // clear input
-
-    updateUI(currentData, forecastData);
+    localStorage.setItem('lastSearchedCity', current.name);
+    cityInput.value = '';
+    updateUI(current, forecast);
 }
 
 // ==========================================
-// UI & LOGIC UPDATES
+// UI UPDATE
 // ==========================================
-
 function updateUI(current, forecast) {
     hideError();
     hideLoading();
 
-    // 1. Update Current Weather
-    cityDisplay.textContent = current.name;
-    countryDisplay.innerHTML = `<i class="fa-solid fa-location-dot mr-1"></i>${current.sys.country}`;
+    // Location
+    cityDisplay.textContent    = current.name;
+    countryDisplay.textContent = current.sys.country;
 
-    // Check if rain exists in the last hour
-    const rainVol = current.rain && current.rain['1h'] ? current.rain['1h'] : 0;
-
+    // Temp & Condition
     const temp = Math.round(current.main.temp);
-    currentTemp.textContent = `${temp}°`;
+    currentTemp.textContent      = `${temp}°`;
     currentCondition.textContent = current.weather[0].description;
-    currentHumidity.textContent = `${current.main.humidity}%`;
-    currentWind.textContent = `${current.wind.speed} m/s`;
+    currentHumidity.textContent  = `${current.main.humidity}%`;
+    currentWind.textContent      = `${current.wind.speed} m/s`;
+    feelsLikeEl.textContent      = `${Math.round(current.main.feels_like)}°`;
+    visibilityEl.textContent     = `${(current.visibility / 1000).toFixed(1)} km`;
 
-    // Set dynamic icon mapping
-    const iconCode = current.weather[0].icon;
-    currentIcon.src = `https://openweathermap.org/img/wn/${iconCode}@4x.png`;
+    // Icon
+    currentIcon.src = `https://openweathermap.org/img/wn/${current.weather[0].icon}@4x.png`;
 
-    // Background remains static gradient as per new design
+    // Sun times
+    const sunrise = formatTime(current.sys.sunrise, current.timezone);
+    const sunset  = formatTime(current.sys.sunset, current.timezone);
+    sunriseEl.textContent = sunrise;
+    sunsetEl.textContent  = sunset;
+    animateSunArc(current.sys.sunrise, current.sys.sunset);
 
-    // 3. Generate "What to Wear" Advice
-    // probability of precipitation (pop) could be estimated from weather code or rain volume
-    // For a more accurate "pop" we can look at the first item of forecastData
-    const currentPop = forecast.list[0].pop * 100; // probability of precipitation in %
-    generateClothingAdvice(temp, currentPop, current.weather[0].main);
+    // Advice
+    const pop = forecast.list[0].pop * 100;
+    generateAdvice(temp, pop, current.weather[0].main);
 
-    // 4. Update 5-Day Forecast
+    // Forecast
     renderForecast(forecast);
 
-    // Show content with fade-in
+    // Reveal
     weatherContent.classList.remove('hidden');
-    // slight delay for opacity transition
-    setTimeout(() => {
-        weatherContent.classList.remove('opacity-0');
-    }, 50);
-}
-
-// "What to Wear" Recommendation Logic
-function getClothingAdvice(temp, pop, weatherMain) {
-    const adviceList = [];
-
-    // Temperature Logic
-    if (temp < 15) {
-        adviceList.push({ text: "Wear warm clothes", icon: "🧥", emojiClass: "text-[#3b82f6]" });
-    } else if (temp >= 15 && temp <= 25) {
-        adviceList.push({ text: "Light clothing", icon: "👕", emojiClass: "text-emerald-500" });
-    } else {
-        adviceList.push({ text: "Stay cool, wear cotton", icon: "☀️", emojiClass: "text-[#f97316]" });
-    }
-
-    // Rain Logic
-    if (pop > 20 || weatherMain.toLowerCase().includes('rain') || weatherMain.toLowerCase().includes('drizzle')) {
-        adviceList.push({ text: "Carry an umbrella", icon: "☔", emojiClass: "text-[#3b82f6]" });
-    }
-
-    // Explicit Snow Logic
-    if (weatherMain.toLowerCase().includes('snow')) {
-        adviceList.push({ text: "Wear winter boots", icon: "❄️", emojiClass: "text-[#1e293b]" });
-    }
-
-    return adviceList;
-}
-
-function generateClothingAdvice(temp, pop, weatherMain) {
-    const adviceList = getClothingAdvice(temp, pop, weatherMain);
-    adviceContainer.innerHTML = '';
-
-    adviceList.forEach(advice => {
-        const item = document.createElement('div');
-        item.className = 'advice-item shadow-sm';
-        item.innerHTML = `
-            <span class="text-3xl ${advice.emojiClass}">${advice.icon}</span>
-            <span class="font-semibold text-lg text-[#1e293b]">${advice.text}</span>
-        `;
-        adviceContainer.appendChild(item);
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            weatherContent.classList.add('revealed');
+        });
     });
 }
 
-// Render 5-day Forecast 
+// ==========================================
+// SUN ARC
+// ==========================================
+function animateSunArc(sunriseUnix, sunsetUnix) {
+    const now   = Math.floor(Date.now() / 1000);
+    const total = sunsetUnix - sunriseUnix;
+    const elapsed = Math.min(Math.max(now - sunriseUnix, 0), total);
+    const progress = elapsed / total; // 0–1
+
+    const pathLength = 300;
+    const dashOffset = pathLength * (1 - progress);
+
+    const progressPath = document.getElementById('sun-progress-path');
+    const sunDot = document.getElementById('sun-dot');
+
+    if (progressPath) {
+        progressPath.style.strokeDashoffset = dashOffset;
+        progressPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+    }
+
+    // Position the dot along the arc using parametric SVG path
+    if (sunDot) {
+        // Arc: Q100 0 190 100 from x=10,y=100
+        const t = progress;
+        // Bezier quadratic: P = (1-t)^2 * P0 + 2*(1-t)*t * P1 + t^2 * P2
+        const x = Math.pow(1 - t, 2) * 10   + 2 * (1 - t) * t * 100 + t * t * 190;
+        const y = Math.pow(1 - t, 2) * 100  + 2 * (1 - t) * t * 0   + t * t * 100;
+        sunDot.setAttribute('cx', x.toFixed(1));
+        sunDot.setAttribute('cy', y.toFixed(1));
+    }
+}
+
+function formatTime(unixTimestamp, timezoneOffset) {
+    const date = new Date((unixTimestamp + timezoneOffset) * 1000);
+    const h = date.getUTCHours().toString().padStart(2, '0');
+    const m = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+// ==========================================
+// ADVICE
+// ==========================================
+function generateAdvice(temp, pop, weatherMain) {
+    const list = [];
+    const wm = weatherMain.toLowerCase();
+
+    if (temp < 10)       list.push({ icon: '🧥', text: 'Heavy coat recommended — it\'s cold out.' });
+    else if (temp < 18)  list.push({ icon: '🧣', text: 'Layer up with a jacket or sweater.' });
+    else if (temp <= 26) list.push({ icon: '👕', text: 'Light clothing is perfect today.' });
+    else                 list.push({ icon: '🩴', text: 'Stay cool — breathable cotton is best.' });
+
+    if (pop > 20 || wm.includes('rain') || wm.includes('drizzle'))
+        list.push({ icon: '☂️', text: 'Bring an umbrella — rain is likely.' });
+
+    if (wm.includes('snow'))
+        list.push({ icon: '❄️', text: 'Snowfall expected — wear winter boots.' });
+
+    if (wm.includes('thunderstorm'))
+        list.push({ icon: '⚡', text: 'Thunderstorms nearby — stay indoors if possible.' });
+
+    if (wm.includes('fog') || wm.includes('mist') || wm.includes('haze'))
+        list.push({ icon: '🌫️', text: 'Low visibility — drive carefully.' });
+
+    if (temp > 30)
+        list.push({ icon: '💧', text: 'Stay hydrated — high heat alert.' });
+
+    adviceContainer.innerHTML = '';
+    list.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'advice-item';
+        el.style.animationDelay = `${i * 0.1 + 0.3}s`;
+        el.innerHTML = `
+            <span class="advice-emoji">${item.icon}</span>
+            <span class="advice-text">${item.text}</span>
+        `;
+        adviceContainer.appendChild(el);
+    });
+}
+
+// ==========================================
+// FORECAST
+// ==========================================
 function renderForecast(forecastData) {
     forecastContainer.innerHTML = '';
 
-    // The API returns data every 3 hours (40 items for 5 days).
-    // We want to extract 1 item per day (e.g., at 12:00:00).
-    // We filter the array for times that include '12:00:00'.
-    const dailyForecasts = forecastData.list.filter(item => item.dt_txt.includes('12:00:00'));
-
-    // Sometimes the current day doesn't have 12:00:00 left, so if we don't get 5, 
-    // we can fallback to just taking every 8th item (24 hours / 3 hours)
-    let finalForecasts = dailyForecasts;
-    if (dailyForecasts.length < 5) {
-        finalForecasts = forecastData.list.filter((_, index) => index % 8 === 0).slice(0, 5);
+    let daily = forecastData.list.filter(i => i.dt_txt.includes('12:00:00'));
+    if (daily.length < 5) {
+        daily = forecastData.list.filter((_, idx) => idx % 8 === 0).slice(0, 5);
     }
 
-    finalForecasts.forEach((day, index) => {
-        const dateObj = new Date(day.dt * 1000);
-        // Short day name (Mon, Tue, etc.)
-        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-        const temp = Math.round(day.main.temp);
-        const iconCode = day.weather[0].icon;
+    daily.forEach((day, i) => {
+        const date    = new Date(day.dt * 1000);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const temp    = Math.round(day.main.temp);
+        const icon    = day.weather[0].icon;
+        const desc    = day.weather[0].main;
 
         const card = document.createElement('div');
-        card.className = `bg-white rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-all forecast-card-anim`;
-        // Cascading animation delay
-        card.style.animationDelay = `${index * 0.1}s`;
-        card.style.opacity = '0'; // start hidden for animation
-
+        card.className = 'forecast-card';
+        card.style.animationDelay = `${i * 0.08 + 0.2}s`;
         card.innerHTML = `
-            <div class="font-bold text-sm mb-2 text-[#64748b] uppercase tracking-widest">${dayName}</div>
-            <img src="https://openweathermap.org/img/wn/${iconCode}@2x.png" alt="Forecast Icon" class="w-16 h-16 drop-shadow-sm mb-2">
-            <div class="text-2xl font-bold text-[#1e293b]">${temp}°</div>
-            <div class="text-xs text-[#64748b] capitalize mt-1 hidden md:block">${day.weather[0].main}</div>
+            <span class="forecast-day">${dayName}</span>
+            <img class="forecast-icon" src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${desc}">
+            <span class="forecast-temp">${temp}°</span>
+            <span class="forecast-desc">${desc}</span>
         `;
-
         forecastContainer.appendChild(card);
     });
 }
@@ -260,23 +254,21 @@ function renderForecast(forecastData) {
 // ==========================================
 // HELPERS
 // ==========================================
-
-let loadingTimeout;
+let loadingTimer;
 
 function showLoading() {
-    errorMessage.classList.add('hidden');
-    weatherContent.classList.add('opacity-0');
-    // small timeout to allow fade out
-    clearTimeout(loadingTimeout);
-    loadingTimeout = setTimeout(() => {
+    hideError();
+    weatherContent.classList.remove('revealed');
+    clearTimeout(loadingTimer);
+    loadingTimer = setTimeout(() => {
         weatherContent.classList.add('hidden');
-        loadingIndicator.classList.remove('hidden');
+        loadingEl.classList.remove('hidden');
     }, 300);
 }
 
 function hideLoading() {
-    clearTimeout(loadingTimeout);
-    loadingIndicator.classList.add('hidden');
+    clearTimeout(loadingTimer);
+    loadingEl.classList.add('hidden');
 }
 
 function showError(msg) {
