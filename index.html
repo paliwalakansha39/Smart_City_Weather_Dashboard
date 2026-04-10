@@ -17,14 +17,20 @@
         <div class="orb orb-3"></div>
     </div>
     <div class="noise-overlay"></div>
+    <div id="weather-fx" class="weather-fx"></div>
 
     <div class="app-container">
 
         <!-- Header -->
         <header class="header">
-            <div class="brand">
-                <span class="brand-icon"><i class="fa-solid fa-wind"></i></span>
-                <span class="brand-name">WeatherIQ</span>
+            <div class="header-top">
+                <div class="brand">
+                    <span class="brand-icon"><i class="fa-solid fa-wind"></i></span>
+                    <span class="brand-name">WeatherIQ</span>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-sun" id="theme-icon"></i>
+                </button>
             </div>
 
             <!-- Search -->
@@ -42,7 +48,11 @@
                     </button>
                 </div>
             </form>
-
+            
+            <!-- Recent Searches -->
+            <div id="recent-searches" class="recent-searches">
+                <!-- Injected by JS -->
+            </div>
             <!-- Messages -->
             <div id="error-message" class="error-banner hidden">
                 <i class="fa-solid fa-triangle-exclamation"></i>
@@ -115,6 +125,15 @@
                         <div class="stat-info">
                             <span class="stat-label">Visibility</span>
                             <span class="stat-value" id="visibility">-- km</span>
+                        </div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-icon aqi-icon">
+                            <i class="fa-solid fa-leaf"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">AQI</span>
+                            <span class="stat-value" id="current-aqi">--</span>
                         </div>
                     </div>
                 </div>

@@ -28,10 +28,17 @@ const currentHumidity  = document.getElementById('current-humidity');
 const currentWind      = document.getElementById('current-wind');
 const feelsLikeEl      = document.getElementById('feels-like');
 const visibilityEl     = document.getElementById('visibility');
+const currentAqi       = document.getElementById('current-aqi');
 const sunriseEl        = document.getElementById('sunrise-time');
 const sunsetEl         = document.getElementById('sunset-time');
 const adviceContainer  = document.getElementById('advice-container');
 const forecastContainer = document.getElementById('forecast-container');
+const themeToggle      = document.getElementById('theme-toggle');
+const themeIcon        = document.getElementById('theme-icon');
+const recentSearchesEl = document.getElementById('recent-searches');
+const weatherFx        = document.getElementById('weather-fx');
+
+let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
 
 // ==========================================
 // INIT
@@ -44,7 +51,11 @@ searchForm.addEventListener('submit', (e) => {
     if (city) fetchWeatherData(city);
 });
 
+themeToggle.addEventListener('click', toggleTheme);
+
 function initApp() {
+    initTheme();
+    renderRecentSearches();
     const saved = localStorage.getItem('lastSearchedCity');
     if (saved) {
         fetchWeatherData(saved);
@@ -55,6 +66,30 @@ function initApp() {
         );
     } else {
         fetchWeatherData('London');
+    }
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('appTheme') || 'dark';
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeIcon.classList.remove('fa-sun');
+        themeIcon.classList.add('fa-moon');
+    }
+}
+
+function toggleTheme() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('appTheme', 'dark');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('appTheme', 'light');
+        themeIcon.classList.remove('fa-sun');
+        themeIcon.classList.add('fa-moon');
     }
 }
 
@@ -89,16 +124,24 @@ async function handleApiResponses(curRes, fcRes) {
 
     const current  = await curRes.json();
     const forecast = await fcRes.json();
+    
+    // Fetch AQI
+    let aqiData = null;
+    try {
+        const aqiRes = await fetch(`${BASE_URL}/air_pollution?lat=${current.coord.lat}&lon=${current.coord.lon}&appid=${API_KEY}`);
+        if(aqiRes.ok) aqiData = await aqiRes.json();
+    } catch {}
 
+    addToRecentSearches(current.name);
     localStorage.setItem('lastSearchedCity', current.name);
     cityInput.value = '';
-    updateUI(current, forecast);
+    updateUI(current, forecast, aqiData);
 }
 
 // ==========================================
 // UI UPDATE
 // ==========================================
-function updateUI(current, forecast) {
+function updateUI(current, forecast, aqiData) {
     hideError();
     hideLoading();
 
@@ -114,6 +157,15 @@ function updateUI(current, forecast) {
     currentWind.textContent      = `${current.wind.speed} m/s`;
     feelsLikeEl.textContent      = `${Math.round(current.main.feels_like)}°`;
     visibilityEl.textContent     = `${(current.visibility / 1000).toFixed(1)} km`;
+
+    // AQI
+    if (aqiData && aqiData.list && aqiData.list.length > 0) {
+        const aqi = aqiData.list[0].main.aqi;
+        const aqiLabels = { 1: 'Good', 2: 'Fair', 3: 'Moderate', 4: 'Poor', 5: 'Very Poor' };
+        currentAqi.textContent = `${aqiLabels[aqi]} - ${aqi}`;
+    } else {
+        currentAqi.textContent = '--';
+    }
 
     // Icon
     currentIcon.src = `https://openweathermap.org/img/wn/${current.weather[0].icon}@4x.png`;
@@ -131,6 +183,11 @@ function updateUI(current, forecast) {
 
     // Forecast
     renderForecast(forecast);
+
+    // Weather Effects & Background
+    const wm = current.weather[0].main.toLowerCase();
+    document.body.setAttribute('data-weather', wm);
+    updateWeatherFx(wm);
 
     // Reveal
     weatherContent.classList.remove('hidden');
@@ -254,6 +311,51 @@ function renderForecast(forecastData) {
 // ==========================================
 // HELPERS
 // ==========================================
+function addToRecentSearches(city) {
+    if (!recentSearches.includes(city)) {
+        recentSearches.unshift(city);
+        if (recentSearches.length > 5) recentSearches.pop();
+        localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+        renderRecentSearches();
+    }
+}
+
+function renderRecentSearches() {
+    recentSearchesEl.innerHTML = '';
+    recentSearches.forEach(city => {
+        const chip = document.createElement('div');
+        chip.className = 'history-chip';
+        chip.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> ${city}`;
+        chip.addEventListener('click', () => fetchWeatherData(city));
+        recentSearchesEl.appendChild(chip);
+    });
+}
+
+function updateWeatherFx(weatherMain) {
+    weatherFx.innerHTML = ''; // Clear existing
+    if (weatherMain.includes('rain') || weatherMain.includes('drizzle') || weatherMain.includes('thunderstorm')) {
+        for(let i=0; i<40; i++) {
+            const drop = document.createElement('div');
+            drop.className = 'drop';
+            drop.style.left = `${Math.random() * 100}vw`;
+            drop.style.animationDuration = `${0.5 + Math.random()}s`;
+            drop.style.animationDelay = `${Math.random()}s`;
+            weatherFx.appendChild(drop);
+        }
+    } else if (weatherMain.includes('snow')) {
+        for(let i=0; i<30; i++) {
+            const flake = document.createElement('div');
+            flake.className = 'flake';
+            flake.style.left = `${Math.random() * 100}vw`;
+            flake.style.width = `${4 + Math.random() * 6}px`;
+            flake.style.height = flake.style.width;
+            flake.style.animationDuration = `${3 + Math.random() * 3}s`;
+            flake.style.animationDelay = `${Math.random() * 2}s`;
+            weatherFx.appendChild(flake);
+        }
+    }
+}
+
 let loadingTimer;
 
 function showLoading() {
